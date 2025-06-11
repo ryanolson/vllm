@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import time
+
 from collections import defaultdict, deque
 from collections.abc import Iterable
 from typing import Any, Optional, Union
@@ -30,6 +32,20 @@ from vllm.v1.outputs import ModelRunnerOutput
 from vllm.v1.request import Request, RequestStatus
 from vllm.v1.spec_decode.metrics import SpecDecodingStats
 from vllm.v1.structured_output import StructuredOutputManager
+
+from dynamo.llm import BlockManager
+from dynamo.llm.vllm_integration.kv_cache_manager import KvbmCacheManager
+import torch
+
+WORKER_ID = 0
+NUM_LAYER = 1
+OUTER_DIM = 1
+PAGE_SIZE = 16
+INNER_DIM = 8
+DTYPE, TORCH_DTYPE = "FP32", torch.float32
+HOST_NUM_BLOCKS = None
+DEVICE_NUM_BLOCKS = 11500
+DEVICE_ID = 0
 
 logger = init_logger(__name__)
 
@@ -138,15 +154,30 @@ class Scheduler(SchedulerInterface):
                 self.num_lookahead_tokens = self.num_spec_tokens
 
         # Create the KV cache manager.
-        self.kv_cache_manager = KVCacheManager(
-            kv_cache_config=kv_cache_config,
-            max_model_len=self.max_model_len,
-            enable_caching=self.cache_config.enable_prefix_caching,
-            caching_hash_algo=self.cache_config.prefix_caching_hash_algo,
-            use_eagle=self.use_eagle,
-            log_stats=self.log_stats,
-            enable_kv_cache_events=self.enable_kv_cache_events,
-        )
+        kv_manager_type = os.environ.get("DYNAMO_KVBM_MANAGER", "vllm")
+        if kv_manager_type in ["vllm"]:
+            self.kv_cache_manager = KVCacheManager(
+                kv_cache_config=kv_cache_config,
+                max_model_len=self.max_model_len,
+                enable_caching=self.cache_config.enable_prefix_caching,
+                caching_hash_algo=self.cache_config.prefix_caching_hash_algo,
+                use_eagle=self.use_eagle,
+                log_stats=self.log_stats,
+                enable_kv_cache_events=self.enable_kv_cache_events,
+            )
+        else:
+            block_manager = BlockManager(
+                WORKER_ID,
+                NUM_LAYER,
+                OUTER_DIM,
+                PAGE_SIZE,
+                INNER_DIM,
+                DTYPE,
+                HOST_NUM_BLOCKS,
+                DEVICE_NUM_BLOCKS,
+                DEVICE_ID,
+            )
+            self.kv_cache_manager = KvbmCacheManager(block_manager, log_stats=self.log_stats)
 
     def schedule(self) -> SchedulerOutput:
         # NOTE(woosuk) on the scheduling algorithm:
