@@ -166,6 +166,7 @@ class Scheduler(SchedulerInterface):
                 enable_kv_cache_events=self.enable_kv_cache_events,
             )
         else:
+            logger.info(f"kv_manager_type is {kv_manager_type}: using Dynamo KVBM Manager")
             block_manager = BlockManager(
                 WORKER_ID,
                 NUM_LAYER,
