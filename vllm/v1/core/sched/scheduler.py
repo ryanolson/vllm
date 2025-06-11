@@ -43,8 +43,6 @@ OUTER_DIM = 1
 PAGE_SIZE = 16
 INNER_DIM = 8
 DTYPE, TORCH_DTYPE = "FP32", torch.float32
-HOST_NUM_BLOCKS = None
-DEVICE_NUM_BLOCKS = 11500
 DEVICE_ID = 0
 
 logger = init_logger(__name__)
@@ -174,8 +172,8 @@ class Scheduler(SchedulerInterface):
                 PAGE_SIZE,
                 INNER_DIM,
                 DTYPE,
-                HOST_NUM_BLOCKS,
-                DEVICE_NUM_BLOCKS,
+                None,
+                kv_cache_config.num_blocks,
                 DEVICE_ID,
             )
             self.kv_cache_manager = KvbmCacheManager(block_manager, log_stats=self.log_stats)
