@@ -638,7 +638,6 @@ class EngineCoreProc(EngineCore):
                             linger=4000) as socket:
             while True:
                 outputs = self.output_queue.get()
-                print(f"outputs: {outputs}")
                 if outputs == EngineCoreProc.ENGINE_CORE_DEAD:
                     socket.send(outputs, copy=False)
                     break
