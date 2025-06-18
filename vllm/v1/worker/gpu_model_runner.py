@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Optional, Union, cast, get_args
 
 import numpy as np
+import os
 import torch
 import torch.distributed
 import torch.nn as nn
@@ -71,6 +72,8 @@ from ..sample.logits_processor import LogitsProcessorManager
 from .utils import (bind_kv_cache, gather_mm_placeholders,
                     initialize_kv_cache_for_kv_sharing,
                     sanity_check_mm_encoder_outputs, scatter_mm_placeholders)
+
+from dynamo.llm import KvbmWorker
 
 if TYPE_CHECKING:
     import xgrammar as xgr
@@ -2598,6 +2601,44 @@ class GPUModelRunner(LoRAModelRunnerMixin):
 
         if has_kv_transfer_group():
             get_kv_transfer_group().register_kv_caches(kv_caches)
+
+        print("CACHE CONFIG", self.cache_config)
+        print(kv_cache_config)
+
+        if os.environ.get("DYNAMO_KVBM_MANAGER", "vllm") not in ["vllm"]:
+
+            if len(kv_cache_config.kv_cache_groups) > 1:
+                raise NotImplementedError(
+                    "Hybrid models with more than one KV cache type are not "
+                    "supported yet.")
+            
+            kv_cache_group = kv_cache_config.kv_cache_groups[0]
+            assert len(kv_cache_group.layer_names) == len(kv_caches)
+
+            num_device_blocks = kv_cache_config.num_blocks
+            page_size = kv_cache_group.kv_cache_spec.block_size
+            tensors = list(kv_caches.values())
+
+            def compute_num_blocks(env_var: str) -> int:
+                cache_size_gb = int(os.environ.get(env_var, "0"))
+                return int(cache_size_gb * 1e9 // (tensors[0].nbytes * self.parallel_config.world_size))
+
+            num_host_blocks = compute_num_blocks("DYNAMO_KVBM_CPU_CACHE")
+            num_disk_blocks = compute_num_blocks("DYNAMO_KVBM_DISK_CACHE")
+
+            self.kvbm_worker = KvbmWorker(
+                num_device_blocks,
+                num_host_blocks,
+                num_disk_blocks,
+                page_size,
+                tensors,
+                device_id=self.device.index,
+                # TODO: This worker id won't be unique for multi-node.
+                worker_id=self.device.index,
+                # Hardcode for now.
+                dtype="fp16",
+                barrier_id="kvbm"
+            )   
 
     def get_kv_cache_spec(self) -> dict[str, KVCacheSpec]:
         """
