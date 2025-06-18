@@ -37,7 +37,7 @@ from vllm.v1.request import Request, RequestStatus
 from vllm.v1.spec_decode.metrics import SpecDecodingStats
 from vllm.v1.structured_output import StructuredOutputManager
 
-from dynamo.llm import BlockManager
+from dynamo.llm import BlockManager, KvbmLeader
 from dynamo.llm.vllm_integration.kv_cache_manager import KvbmCacheManager
 import torch
 
@@ -191,6 +191,10 @@ class Scheduler(SchedulerInterface):
                 DEVICE_ID,
             )
             self.kv_cache_manager = KvbmCacheManager(block_manager, log_stats=self.log_stats)
+
+            # Instantiate the leader. Harcode for now.
+            self.leader = KvbmLeader(barrier_id="kvbm", world_size=1)
+
 
     def schedule(self) -> SchedulerOutput:
         # NOTE(woosuk) on the scheduling algorithm:
