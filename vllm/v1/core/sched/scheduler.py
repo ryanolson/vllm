@@ -192,8 +192,12 @@ class Scheduler(SchedulerInterface):
             )
             self.kv_cache_manager = KvbmCacheManager(block_manager, log_stats=self.log_stats)
 
+            world_size = self.vllm_config.parallel_config.world_size
+
+            bytes_per_block = sum(v.size for v in kv_cache_config.tensors.values()) / kv_cache_config.num_blocks / world_size
+
             # Instantiate the leader. Harcode for now.
-            self.leader = KvbmLeader(barrier_id="kvbm", world_size=1)
+            self.leader = KvbmLeader(barrier_id="kvbm", bytes_per_block=int(bytes_per_block), world_size=world_size)
 
 
     def schedule(self) -> SchedulerOutput:
