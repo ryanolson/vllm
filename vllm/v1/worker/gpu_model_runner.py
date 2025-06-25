@@ -2934,17 +2934,8 @@ class GPUModelRunner(LoRAModelRunnerMixin, KVConnectorModelRunnerMixin):
             page_size = kv_cache_group.kv_cache_spec.block_size
             tensors = list(kv_caches.values())
 
-            def compute_num_blocks(env_var: str) -> int:
-                cache_size_gb = int(os.environ.get(env_var, "0"))
-                return int(cache_size_gb * 1e9 // (tensors[0].nbytes * self.parallel_config.world_size))
-
-            num_host_blocks = compute_num_blocks("DYNAMO_KVBM_CPU_CACHE")
-            num_disk_blocks = compute_num_blocks("DYNAMO_KVBM_DISK_CACHE")
-
             self.kvbm_worker = KvbmWorker(
                 num_device_blocks,
-                num_host_blocks,
-                num_disk_blocks,
                 page_size,
                 tensors,
                 device_id=self.device.index,
