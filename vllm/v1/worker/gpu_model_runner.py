@@ -2917,9 +2917,6 @@ class GPUModelRunner(LoRAModelRunnerMixin, KVConnectorModelRunnerMixin):
         if has_kv_transfer_group():
             get_kv_transfer_group().register_kv_caches(kv_caches)
 
-        print("CACHE CONFIG", self.cache_config)
-        print(kv_cache_config)
-
         if os.environ.get("DYNAMO_KVBM_MANAGER", "vllm") not in ["vllm"]:
 
             if len(kv_cache_config.kv_cache_groups) > 1:
