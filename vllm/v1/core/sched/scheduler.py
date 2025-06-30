@@ -390,6 +390,11 @@ class Scheduler(SchedulerInterface):
                         self.kv_cache_manager.get_computed_blocks(
                             request)
 
+                    new_host_computed_blocks, num_new_host_computed_tokens, \
+                        new_disk_computed_blocks, num_new_disk_computed_tokens = \
+                            self.kv_cache_manager.get_offloaded_computed_blocks(request)
+                    print(f"$$$ziqif: host_block_count: {num_new_host_computed_tokens}, disk_block_count: {num_new_disk_computed_tokens}")
+
                     # Get externally-cached tokens if using a KVConnector.
                     if self.connector is not None:
                         num_external_computed_tokens, load_kv_async = (
