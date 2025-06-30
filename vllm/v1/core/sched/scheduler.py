@@ -38,12 +38,6 @@ from dynamo.llm.vllm_integration.kv_cache_manager import KvbmCacheManager
 import torch
 
 WORKER_ID = 0
-NUM_LAYER = 1
-OUTER_DIM = 1
-PAGE_SIZE = 16
-INNER_DIM = 8
-DTYPE, TORCH_DTYPE = "FP32", torch.float32
-DEVICE_ID = 0
 
 logger = init_logger(__name__)
 
@@ -165,27 +159,22 @@ class Scheduler(SchedulerInterface):
             )
         else:
             logger.info(f"kv_manager_type is {kv_manager_type}: using Dynamo KVBM Manager")
-            block_manager = BlockManager(
-                WORKER_ID,
-                NUM_LAYER,
-                OUTER_DIM,
-                PAGE_SIZE,
-                INNER_DIM,
-                DTYPE,
-                None,
-                kv_cache_config.num_blocks,
-                DEVICE_ID,
-            )
-            self.kv_cache_manager = KvbmCacheManager(block_manager, log_stats=self.log_stats)
 
             world_size = self.vllm_config.parallel_config.world_size
-
             bytes_per_block = sum(v.size for v in kv_cache_config.tensors.values()) / kv_cache_config.num_blocks / world_size
 
             # Instantiate the leader
             # For now, hardcode the barrier id. 
             # Moving forward, we ideally get this from an env var or etcd.
-            self.leader = KvbmLeader(barrier_id="kvbm", bytes_per_block=int(bytes_per_block), world_size=world_size)
+            leader = KvbmLeader(barrier_id="kvbm", bytes_per_block=int(bytes_per_block), world_size=world_size)
+
+            block_manager = BlockManager(
+                WORKER_ID,
+                leader,
+                self.block_size,
+                kv_cache_config.num_blocks,
+            )
+            self.kv_cache_manager = KvbmCacheManager(block_manager, log_stats=self.log_stats)
 
 
     def schedule(self) -> SchedulerOutput:
