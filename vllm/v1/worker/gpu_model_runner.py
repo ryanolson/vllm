@@ -7,6 +7,7 @@ import weakref
 from typing import TYPE_CHECKING, Optional, Union
 
 import numpy as np
+import os
 import torch
 import torch.distributed
 import torch.nn as nn
@@ -59,6 +60,8 @@ from vllm.v1.worker.lora_model_runner_mixin import LoRAModelRunnerMixin
 
 from .utils import (gather_mm_placeholders, sanity_check_mm_encoder_outputs,
                     scatter_mm_placeholders)
+
+from dynamo.llm import KvbmWorker
 
 if TYPE_CHECKING:
     import xgrammar as xgr
@@ -2039,6 +2042,32 @@ class GPUModelRunner(LoRAModelRunnerMixin):
 
         if has_kv_transfer_group():
             get_kv_transfer_group().register_kv_caches(kv_caches)
+
+        if os.environ.get("DYNAMO_KVBM_MANAGER", "vllm") not in ["vllm"]:
+
+            if len(kv_cache_config.kv_cache_groups) > 1:
+                raise NotImplementedError(
+                    "Hybrid models with more than one KV cache type are not "
+                    "supported yet.")
+            
+            kv_cache_group = kv_cache_config.kv_cache_groups[0]
+            assert len(kv_cache_group.layer_names) == len(kv_caches)
+
+            num_device_blocks = kv_cache_config.num_blocks
+            page_size = kv_cache_group.kv_cache_spec.block_size
+            tensors = list(kv_caches.values())
+
+            self.kvbm_worker = KvbmWorker(
+                num_device_blocks,
+                page_size,
+                tensors,
+                device_id=self.device.index,
+                # TODO: This worker id won't be unique for multi-node.
+                worker_id=self.device.index,
+                # Hardcode for now.
+                dtype="fp16",
+                barrier_id="kvbm"
+            )   
 
     def get_kv_cache_spec(self) -> dict[str, KVCacheSpec]:
         """
