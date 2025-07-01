@@ -176,6 +176,12 @@ class Scheduler(SchedulerInterface):
             )
             self.kv_cache_manager = KvbmCacheManager(block_manager, log_stats=self.log_stats)
 
+            if self.connector is not None:
+                print("KVCacheConnector is not supported in combination with Dynamo KVBM Manager")
+                raise ValueError("KVCacheConnector is not supported in combination with Dynamo KVBM Manager")
+            
+            self.connector = self.kv_cache_manager
+
 
     def schedule(self) -> SchedulerOutput:
         # NOTE(woosuk) on the scheduling algorithm:
@@ -389,11 +395,6 @@ class Scheduler(SchedulerInterface):
                     new_computed_blocks, num_new_local_computed_tokens = \
                         self.kv_cache_manager.get_computed_blocks(
                             request)
-
-                    need_to_allocate, new_host_computed_blocks, num_new_host_computed_tokens, \
-                        new_disk_computed_blocks, num_new_disk_computed_tokens = \
-                            self.kv_cache_manager.get_offloaded_computed_blocks(request, num_new_local_computed_tokens)
-                    print(f"$$$ziqif: need_to_allocate: {need_to_allocate}, num_new_host_computed_tokens: {num_new_host_computed_tokens}, num_new_disk_computed_tokens: {num_new_disk_computed_tokens}")
 
                     # Get externally-cached tokens if using a KVConnector.
                     if self.connector is not None:
