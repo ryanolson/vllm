@@ -2064,9 +2064,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                 device_id=self.device.index,
                 # TODO: This worker id won't be unique for multi-node.
                 worker_id=self.device.index,
-                # Hardcode for now.
                 dtype_width_bytes=self.kv_cache_dtype.itemsize,
-                barrier_id="kvbm"
             )   
 
     def get_kv_cache_spec(self) -> dict[str, KVCacheSpec]:
