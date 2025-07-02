@@ -164,9 +164,7 @@ class Scheduler(SchedulerInterface):
             bytes_per_block = sum(v.size for v in kv_cache_config.tensors.values()) / kv_cache_config.num_blocks / world_size
 
             # Instantiate the leader
-            # For now, hardcode the barrier id. 
-            # Moving forward, we ideally get this from an env var or etcd.
-            leader = KvbmLeader(barrier_id="kvbm", bytes_per_block=int(bytes_per_block), world_size=world_size)
+            leader = KvbmLeader(bytes_per_block=int(bytes_per_block), world_size=world_size)
 
             block_manager = BlockManager(
                 WORKER_ID,
