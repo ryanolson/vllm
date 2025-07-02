@@ -2624,7 +2624,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                 # TODO: This worker id won't be unique for multi-node.
                 worker_id=self.device.index,
                 # Hardcode for now.
-                dtype="fp16",
+                dtype_width_bytes=self.kv_cache_dtype.itemsize,
                 barrier_id="kvbm"
             )   
 
