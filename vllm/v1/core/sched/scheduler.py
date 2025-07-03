@@ -33,10 +33,6 @@ from vllm.v1.request import Request, RequestStatus
 from vllm.v1.spec_decode.metrics import SpecDecodingStats
 from vllm.v1.structured_output import StructuredOutputManager
 
-from dynamo.llm import BlockManager, KvbmLeader
-from dynamo.llm.vllm_integration.kv_cache_manager import KvbmCacheManager
-import torch
-
 WORKER_ID = 0
 
 logger = init_logger(__name__)
@@ -147,7 +143,19 @@ class Scheduler(SchedulerInterface):
 
         # Create the KV cache manager.
         kv_manager_type = os.environ.get("DYNAMO_KVBM_MANAGER", "vllm")
-        if kv_manager_type in ["vllm"]:
+
+        using_dynamo_kvbm = False
+
+        if kv_manager_type not in ["vllm"]:
+            try:
+                from dynamo.llm import BlockManager, KvbmLeader
+                from dynamo.llm.vllm_integration.kv_cache_manager import KvbmCacheManager
+                using_dynamo_kvbm = True
+            except ImportError:
+                logger.warning("Dynamo KVBM is not installed. Falling back to vLLM KVCacheManager")
+                using_dynamo_kvbm = False
+
+        if not using_dynamo_kvbm:
             self.kv_cache_manager = KVCacheManager(
                 kv_cache_config=kv_cache_config,
                 max_model_len=self.max_model_len,
