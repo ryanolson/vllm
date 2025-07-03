@@ -61,8 +61,6 @@ from vllm.v1.worker.lora_model_runner_mixin import LoRAModelRunnerMixin
 from .utils import (gather_mm_placeholders, sanity_check_mm_encoder_outputs,
                     scatter_mm_placeholders)
 
-from dynamo.llm import KvbmWorker
-
 if TYPE_CHECKING:
     import xgrammar as xgr
 
@@ -2043,8 +2041,15 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         if has_kv_transfer_group():
             get_kv_transfer_group().register_kv_caches(kv_caches)
 
+        using_dynamo_kvbm = False
         if os.environ.get("DYNAMO_KVBM_MANAGER", "vllm") not in ["vllm"]:
-
+            try:
+                from dynamo.llm import KvbmWorker
+                using_dynamo_kvbm = True
+            except ImportError:
+                logger.warning("Dynamo KVBM is not installed. Falling back to vLLM KVCacheManager")
+        
+        if using_dynamo_kvbm:
             if len(kv_cache_config.kv_cache_groups) > 1:
                 raise NotImplementedError(
                     "Hybrid models with more than one KV cache type are not "
