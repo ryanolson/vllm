@@ -161,7 +161,7 @@ class Scheduler(SchedulerInterface):
             logger.info(f"kv_manager_type is {kv_manager_type}: using Dynamo KVBM Manager")
 
             world_size = self.vllm_config.parallel_config.world_size
-            bytes_per_block = sum(v.size for v in kv_cache_config.tensors.values()) / kv_cache_config.num_blocks / world_size
+            bytes_per_block = sum(v.size for v in kv_cache_config.tensors.values()) / kv_cache_config.num_blocks * world_size
 
             # Instantiate the leader
             leader = KvbmLeader(bytes_per_block=int(bytes_per_block), world_size=world_size)
