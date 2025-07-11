@@ -172,7 +172,7 @@ class Scheduler(SchedulerInterface):
                 self.block_size,
                 kv_cache_config.num_blocks,
             )
-            self.kv_cache_manager = KvbmCacheManager(block_manager, log_stats=self.log_stats)
+            self.kv_cache_manager = KvbmCacheManager(block_manager, self, log_stats=self.log_stats)
 
             if self.connector is not None:
                 print("KVCacheConnector is not supported in combination with Dynamo KVBM Manager")
