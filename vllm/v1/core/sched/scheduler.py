@@ -172,13 +172,41 @@ class Scheduler(SchedulerInterface):
                 self.block_size,
                 kv_cache_config.num_blocks,
             )
+
             self.kv_cache_manager = KvbmCacheManager(block_manager, log_stats=self.log_stats)
 
             if self.connector is not None:
                 print("KVCacheConnector is not supported in combination with Dynamo KVBM Manager")
                 raise ValueError("KVCacheConnector is not supported in combination with Dynamo KVBM Manager")
-            
+
             self.connector = self.kv_cache_manager
+
+            # 3 envs:
+            # DYNAMO_KVBM_CONTROLLER_ENABLE - defaults to "true"
+            # DYNAMO_KVBM_CONTROLLER_NAMESPACE - defaults to "test"
+            # DYNAMO_KVBM_CONTROLLER_COMPONENT - defaults to "kvbm"
+
+            enable = os.environ.get("DYNAMO_KVBM_CONTROLLER_ENABLE", "true").lower() == "true"
+            namespace = os.environ.get("DYNAMO_KVBM_CONTROLLER_NAMESPACE", "test")
+            component = os.environ.get("DYNAMO_KVBM_CONTROLLER_COMPONENT", "kvbm")
+            if not enable:
+                logger.info("DYNAMO_KVBM_CONTROLLER_ENABLE is not set to true. Skipping Dynamo KVBM Manager")
+                return
+
+            if enable:
+                from dynamo.runtime import DistributedRuntime
+                import asyncio
+
+                try:
+                    loop = asyncio.get_running_loop()
+                except Exception as e:
+                    loop = asyncio.new_event_loop()
+
+                self.drt = DistributedRuntime(loop, False)
+                ns = self.drt.namespace(namespace)
+                cp = ns.component(component)
+
+                block_manager.init_controller(cp)
 
 
     def schedule(self) -> SchedulerOutput:
