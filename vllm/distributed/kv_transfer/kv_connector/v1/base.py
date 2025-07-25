@@ -7,7 +7,7 @@ communication in vLLM v1
 The class provides the following primitives:
     Scheduler-side: runs in the scheduler, binds metadata, which
     is used by the worker-side to load/save KV cache.
-        get_num_new_matched_tokens() - get number of new tokens 
+        get_num_new_matched_tokens() - get number of new tokens
             that exist in the remote KV cache. Might be called multiple
             times for a given request and should be side-effect free.
         update_state_after_alloc() - update KVConnector state after
@@ -93,7 +93,7 @@ class KVConnectorBase_V1(ABC):
             self, connector_metadata: KVConnectorMetadata) -> None:
         """Set the connector metadata from the scheduler.
 
-        This function should be called by the model runner every time 
+        This function should be called by the model runner every time
         before the model execution. The metadata will be used for runtime
         KV cache loading and saving.
 
@@ -105,7 +105,7 @@ class KVConnectorBase_V1(ABC):
     def clear_connector_metadata(self) -> None:
         """Clear the connector metadata.
 
-        This function should be called by the model runner every time 
+        This function should be called by the model runner every time
         after the model execution.
         """
         self._connector_metadata = None
@@ -153,9 +153,9 @@ class KVConnectorBase_V1(ABC):
             **kwargs: additional arguments for the load operation
 
         Note:
-            The number of elements in kv_caches and layer_names should be 
+            The number of elements in kv_caches and layer_names should be
             the same.
-            
+
         """
         pass
 
@@ -165,7 +165,7 @@ class KVConnectorBase_V1(ABC):
         Block until the KV for a specific layer is loaded into vLLM's
         paged buffer. This is called from within attention layer to ensure
         async copying from start_load_kv is complete.
-        
+
         This interface will be useful for layer-by-layer pipelining.
 
         Args:
@@ -177,13 +177,13 @@ class KVConnectorBase_V1(ABC):
     def save_kv_layer(self, layer_name: str, kv_layer: torch.Tensor,
                       attn_metadata: "AttentionMetadata", **kwargs) -> None:
         """
-        Start saving a layer of KV cache from vLLM's paged buffer 
+        Start saving a layer of KV cache from vLLM's paged buffer
         to the connector. This is called from within attention layer to
         enable async copying during execution.
 
         Args:
             layer_name (str): the name of the layer.
-            kv_layer (torch.Tensor): the paged KV buffer of the current 
+            kv_layer (torch.Tensor): the paged KV buffer of the current
                 layer in vLLM.
             attn_metadata (AttentionMetadata): the attention metadata.
             **kwargs: additional arguments for the save operation.
@@ -232,7 +232,7 @@ class KVConnectorBase_V1(ABC):
         """
         Get number of new tokens that can be loaded from the
         external KV cache beyond the num_computed_tokens.
-        
+
         Args:
             request (Request): the request object.
             num_computed_tokens (int): the number of locally
@@ -240,7 +240,7 @@ class KVConnectorBase_V1(ABC):
 
         Returns:
             A tuple with the following elements:
-                - The number of tokens that can be loaded from the 
+                - The number of tokens that can be loaded from the
                   external KV cache beyond what is already computed.
                 - `True` if external KV cache tokens will be loaded
                   asynchronously (between scheduler steps). Must be
